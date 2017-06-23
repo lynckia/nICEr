@@ -419,6 +419,9 @@ int nr_ice_ctx_create_with_credentials(char *label, UINT4 flags, char *ufrag, ch
     ctx->local_addrs=0;
     ctx->local_addr_ct=0;
 
+    ctx->min_port=0;
+    ctx->max_port=0;
+
     /* 31 is the max for our priority algorithm */
     if((ctx->stun_server_ct+ctx->turn_server_ct)>31){
       r_log(LOG_ICE,LOG_WARNING,"ICE(%s): Too many STUN/TURN servers specified: max=31", ctx->label);
@@ -1063,6 +1066,14 @@ int nr_ice_get_new_ice_ufrag(char** ufrag)
       *ufrag = 0;
     }
     return(_status);
+  }
+
+void nr_ice_ctx_set_port_range(nr_ice_ctx *ctx, uint16_t min_port, uint16_t max_port)
+  {
+    if (max_port > min_port) {
+      ctx->min_port=min_port;
+      ctx->max_port=max_port;
+    }
   }
 
 int nr_ice_get_new_ice_pwd(char** pwd)

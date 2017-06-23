@@ -163,6 +163,8 @@ struct nr_ice_ctx_ {
 
   char force_net_interface[MAXIFNAME];
   nr_ice_stats stats;
+  uint16_t min_port;
+  uint16_t max_port;
 };
 
 int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp);
@@ -195,6 +197,7 @@ int nr_ice_ctx_set_resolver(nr_ice_ctx *ctx, nr_resolver *resolver);
 int nr_ice_ctx_set_interface_prioritizer(nr_ice_ctx *ctx, nr_interface_prioritizer *prioritizer);
 int nr_ice_ctx_set_turn_tcp_socket_wrapper(nr_ice_ctx *ctx, nr_socket_wrapper_factory *wrapper);
 void nr_ice_ctx_set_socket_factory(nr_ice_ctx *ctx, nr_socket_factory *factory);
+void nr_ice_ctx_set_port_range(nr_ice_ctx *ctx, uint16_t min_port, uint16_t max_port);
 int nr_ice_ctx_set_trickle_cb(nr_ice_ctx *ctx, nr_ice_trickle_candidate_cb cb, void *cb_arg);
 int nr_ice_ctx_hide_candidate(nr_ice_ctx *ctx, nr_ice_candidate *cand);
 int nr_ice_get_new_ice_ufrag(char** ufrag);
@@ -210,4 +213,3 @@ extern int LOG_ICE;
 }
 #endif /* __cplusplus */
 #endif
-

@@ -198,6 +198,36 @@ static int nr_ice_component_create_stun_server_ctx(nr_ice_component *component, 
     return(_status);
   }
 
+static int nr_ice_component_get_port_from_range(struct nr_ice_ctx_ *ctx, uint16_t *port)
+{
+    int r;
+    int _status;
+    if (ctx->min_port == 0  && ctx->max_port == 0) {
+      *port=0;
+      return 0;
+    }
+    uint16_t min_port = ctx->min_port ? ctx->min_port : 49152;
+    uint16_t max_port = ctx->max_port ? ctx->max_port : 65535;
+    if (max_port < min_port)
+      ABORT(r);
+    const unsigned int range = 1 + max_port - min_port;
+    const unsigned int buckets = RAND_MAX / range;
+    const unsigned int limit = buckets * range;
+
+    /* Create equal size buckets all in a row, then fire randomly towards
+     * the buckets until you land in one of them. All buckets are equally
+     * likely. If you land off the end of the line of buckets, try again. */
+    do
+    {
+        r = rand();
+    } while (r >= limit);
+
+    *port = min_port + (r / buckets);
+    _status=0;
+abort:
+    return(_status);
+}
+
 static int nr_ice_component_initialize_udp(struct nr_ice_ctx_ *ctx,nr_ice_component *component, nr_local_addr *addrs, int addr_ct, char *lufrag, Data *pwd)
   {
     nr_socket *sock;
@@ -215,6 +245,9 @@ static int nr_ice_component_initialize_udp(struct nr_ice_ctx_ *ctx,nr_ice_compon
     /* Now one ice_socket for each address */
     for(i=0;i<addr_ct;i++){
       char suppress;
+      nr_transport_addr addr;
+      int tries=50;
+      uint16_t local_port;
 
       if(r=NR_reg_get2_char(NR_ICE_REG_SUPPRESS_INTERFACE_PRFX,addrs[i].addr.ifname,&suppress)){
         if(r!=R_NOT_FOUND)
@@ -224,11 +257,27 @@ static int nr_ice_component_initialize_udp(struct nr_ice_ctx_ *ctx,nr_ice_compon
         if(suppress)
           continue;
       }
-      r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): host address %s",ctx->label,addrs[i].addr.as_string);
-      if((r=nr_socket_factory_create_socket(ctx->socket_factory,&addrs[i].addr,&sock))){
-        r_log(LOG_ICE,LOG_WARNING,"ICE(%s): couldn't create socket for address %s",ctx->label,addrs[i].addr.as_string);
-        continue;
-      }
+
+      if ((r=nr_transport_addr_copy(&addr,&addrs[i].addr)))
+        ABORT(r);
+      addr.protocol=IPPROTO_UDP;
+
+      do{
+        if (!tries--)
+          ABORT(r);
+
+        if((r=nr_ice_component_get_port_from_range(ctx, &local_port)))
+          ABORT(r);
+
+        if ((r=nr_transport_addr_set_port(&addr, local_port)))
+          ABORT(r);
+
+        if((r=nr_transport_addr_fmt_addr_string(&addr)))
+          ABORT(r);
+
+        r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): host address %s",ctx->label,addr.as_string);
+        r=nr_socket_factory_create_socket(ctx->socket_factory,&addr,&sock);
+      } while(r);
 
       if(r=nr_ice_socket_create(ctx,component,sock,NR_ICE_SOCKET_TYPE_DGRAM,&isock))
         ABORT(r);
