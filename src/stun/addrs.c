@@ -30,9 +30,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
-static char *RCSSTRING __UNUSED__="$Id: addrs.c,v 1.2 2008/04/28 18:21:30 ekr Exp $";
-
 #include <csi_platform.h>
 #include <assert.h>
 #include <string.h>
@@ -331,7 +328,7 @@ stun_getifaddrs(nr_local_addr addrs[], int maxaddrs, int *count)
             addrs[*count].interface.type = NR_INTERFACE_TYPE_UNKNOWN;
             addrs[*count].interface.estimated_speed = 0;
 #endif
-            strlcpy(addrs[*count].addr.ifname, if_addr->ifa_name, sizeof(addrs[*count].addr.ifname));
+            (void)strlcpy(addrs[*count].addr.ifname, if_addr->ifa_name, sizeof(addrs[*count].addr.ifname));
             ++(*count);
           }
           break;
@@ -376,10 +373,21 @@ nr_stun_remove_duplicate_addrs(nr_local_addr addrs[], int remove_loopback, int r
     nr_local_addr *tmp = 0;
     int i;
     int n;
+    int contains_regular_ipv6 = 0;
 
     tmp = RMALLOC(*count * sizeof(*tmp));
     if (!tmp)
         ABORT(R_NO_MEMORY);
+
+    for (i = 0; i < *count; ++i) {
+        if (nr_transport_addr_is_teredo(&addrs[i].addr)) {
+            addrs[i].interface.type |= NR_INTERFACE_TYPE_TEREDO;
+        }
+        else if (addrs[i].addr.ip_version == NR_IPV6 &&
+                 !nr_transport_addr_is_mac_based(&addrs[i].addr)) {
+            contains_regular_ipv6 = 1;
+        }
+    }
 
     n = 0;
     for (i = 0; i < *count; ++i) {
@@ -390,9 +398,16 @@ nr_stun_remove_duplicate_addrs(nr_local_addr addrs[], int remove_loopback, int r
             /* skip addrs[i], it's a loopback */
         }
         else if (remove_link_local &&
-                 addrs[i].addr.ip_version == NR_IPV6 &&
                  nr_transport_addr_is_link_local(&addrs[i].addr)) {
             /* skip addrs[i], it's a link-local address */
+        }
+        else if (contains_regular_ipv6 &&
+                 nr_transport_addr_is_mac_based(&addrs[i].addr)) {
+            /* skip addrs[i], it's MAC based */
+        }
+        else if (contains_regular_ipv6 &&
+                 nr_transport_addr_is_teredo(&addrs[i].addr)) {
+            /* skip addrs[i], it's a Teredo address */
         }
         else {
             /* otherwise, copy it to the temporary array */
@@ -425,6 +440,11 @@ nr_stun_get_addrs(nr_local_addr addrs[], int maxaddrs, int *count)
     int _status=0;
     int i;
     char typestr[100];
+
+    // Ensure output records are always fully defined.  See bug 1589990.
+    if (maxaddrs > 0) {
+       memset(addrs, 0, maxaddrs * sizeof(nr_local_addr));
+    }
 
 #ifdef WIN32
     _status = stun_get_win32_addrs(addrs, maxaddrs, count);

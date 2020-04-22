@@ -123,9 +123,6 @@ struct nr_ice_ctx_ {
   UINT4 flags;
   char *label;
 
-  char *ufrag;
-  char *pwd;
-
   UINT4 Ta;
 
   nr_ice_stun_server *stun_servers;           /* The list of stun servers */
@@ -137,7 +134,6 @@ struct nr_ice_ctx_ {
 
   nr_resolver *resolver;                      /* The resolver to use */
   nr_interface_prioritizer *interface_prioritizer;  /* Priority decision logic */
-  nr_socket_wrapper_factory *turn_tcp_socket_wrapper; /* The TURN TCP socket wrapper to use */
   nr_socket_factory *socket_factory;
 
   nr_ice_foundation_head foundations;
@@ -165,6 +161,8 @@ struct nr_ice_ctx_ {
   nr_ice_stats stats;
   uint16_t min_port;
   uint16_t max_port;
+
+  nr_transport_addr *target_for_default_local_address_lookup;
 };
 
 int nr_ice_ctx_create(char *label, UINT4 flags, nr_ice_ctx **ctxp);
@@ -180,10 +178,11 @@ void nr_ice_ctx_add_flags(nr_ice_ctx *ctx, UINT4 flags);
 void nr_ice_ctx_remove_flags(nr_ice_ctx *ctx, UINT4 flags);
 int nr_ice_ctx_destroy(nr_ice_ctx **ctxp);
 int nr_ice_set_local_addresses(nr_ice_ctx *ctx, nr_local_addr* stun_addrs, int stun_addr_ct);
+int nr_ice_set_target_for_default_local_address_lookup(nr_ice_ctx *ctx, const char *target_ip, UINT2 target_port);
 int nr_ice_gather(nr_ice_ctx *ctx, NR_async_cb done_cb, void *cb_arg);
 int nr_ice_add_candidate(nr_ice_ctx *ctx, nr_ice_candidate *cand);
 void nr_ice_gather_finished_cb(NR_SOCKET s, int h, void *cb_arg);
-int nr_ice_add_media_stream(nr_ice_ctx *ctx,char *label,int components, nr_ice_media_stream **streamp);
+int nr_ice_add_media_stream(nr_ice_ctx *ctx,const char *label,const char *ufrag,const char *pwd,int components, nr_ice_media_stream **streamp);
 int nr_ice_remove_media_stream(nr_ice_ctx *ctx,nr_ice_media_stream **streamp);
 int nr_ice_get_global_attributes(nr_ice_ctx *ctx,char ***attrsp, int *attrctp);
 int nr_ice_ctx_deliver_packet(nr_ice_ctx *ctx, nr_ice_component *comp, nr_transport_addr *source_addr, UCHAR *data, int len);
@@ -195,15 +194,12 @@ int nr_ice_ctx_set_turn_servers(nr_ice_ctx *ctx,nr_ice_turn_server *servers, int
 int nr_ice_ctx_copy_turn_servers(nr_ice_ctx *ctx, nr_ice_turn_server *servers, int ct);
 int nr_ice_ctx_set_resolver(nr_ice_ctx *ctx, nr_resolver *resolver);
 int nr_ice_ctx_set_interface_prioritizer(nr_ice_ctx *ctx, nr_interface_prioritizer *prioritizer);
-int nr_ice_ctx_set_turn_tcp_socket_wrapper(nr_ice_ctx *ctx, nr_socket_wrapper_factory *wrapper);
 void nr_ice_ctx_set_socket_factory(nr_ice_ctx *ctx, nr_socket_factory *factory);
 void nr_ice_ctx_set_port_range(nr_ice_ctx *ctx, uint16_t min_port, uint16_t max_port);
 int nr_ice_ctx_set_trickle_cb(nr_ice_ctx *ctx, nr_ice_trickle_candidate_cb cb, void *cb_arg);
 int nr_ice_ctx_hide_candidate(nr_ice_ctx *ctx, nr_ice_candidate *cand);
 int nr_ice_get_new_ice_ufrag(char** ufrag);
 int nr_ice_get_new_ice_pwd(char** pwd);
-// accumulate a count without worrying about rollover
-void nr_ice_accumulate_count(UINT2* orig_count, UINT2 new_count);
 
 #define NR_ICE_MAX_ATTRIBUTE_SIZE 256
 

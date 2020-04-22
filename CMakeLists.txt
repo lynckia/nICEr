@@ -33,7 +33,6 @@ list(APPEND nicer__c_srcs
     "${NICER_SOURCE}/src/ice/ice_socket.c"
     "${NICER_SOURCE}/src/net/nr_resolver.c"
     "${NICER_SOURCE}/src/net/nr_socket_wrapper.c"
-    "${NICER_SOURCE}/src/net/nr_proxy_tunnel.c"
     "${NICER_SOURCE}/src/net/nr_socket.c"
     "${NICER_SOURCE}/src/net/nr_socket_local.c"
     "${NICER_SOURCE}/src/net/nr_socket_multi_tcp.c"
@@ -55,8 +54,7 @@ list(APPEND nicer__c_srcs
     "${NICER_SOURCE}/src/stun/stun_util.c"
     "${NICER_SOURCE}/src/stun/turn_client_ctx.c"
     "${NICER_SOURCE}/src/util/cb_args.c"
-    "${NICER_SOURCE}/src/util/ice_util.c"
-    "${NICER_SOURCE}/src/util/mbslen.c")
+    "${NICER_SOURCE}/src/util/ice_util.c")
 
 list(APPEND nicer__other_srcs
     "${NICER_SOURCE}/src/crypto/nr_crypto.h"
@@ -72,7 +70,6 @@ list(APPEND nicer__other_srcs
     "${NICER_SOURCE}/src/ice/ice_socket.h"
     "${NICER_SOURCE}/src/net/nr_resolver.h"
     "${NICER_SOURCE}/src/net/nr_socket_wrapper.h"
-    "${NICER_SOURCE}/src/net/nr_proxy_tunnel.h"
     "${NICER_SOURCE}/src/net/nr_socket.h"
     "${NICER_SOURCE}/src/net/nr_socket_local.h"
     "${NICER_SOURCE}/src/net/nr_socket_multi_tcp.h"
@@ -96,8 +93,7 @@ list(APPEND nicer__other_srcs
     "${NICER_SOURCE}/src/stun/stun_util.h"
     "${NICER_SOURCE}/src/stun/turn_client_ctx.h"
     "${NICER_SOURCE}/src/util/cb_args.h"
-    "${NICER_SOURCE}/src/util/ice_util.h"
-    "${NICER_SOURCE}/src/util/mbslen.h")
+    "${NICER_SOURCE}/src/util/ice_util.h")
 
 add_library(nicer STATIC ${nicer__c_srcs} ${nicer__other_srcs})
 
