@@ -71,7 +71,12 @@ static int nr_socket_local_recvfrom(void *obj,void * restrict buf,
   size_t maxlen, size_t *len, int flags, nr_transport_addr *from);
 static int nr_socket_local_getfd(void *obj, NR_SOCKET *fd);
 static int nr_socket_local_getaddr(void *obj, nr_transport_addr *addrp);
+static int nr_socket_local_connect(void *obj, nr_transport_addr *addr);
+static int nr_socket_local_swrite(void *obj,const void *msg, size_t len, size_t *written);
+static int nr_socket_local_sread(void *obj,void * restrict buf, size_t maxlen, size_t *len);
 static int nr_socket_local_close(void *obj);
+static int nr_socket_local_listen(void *obj, int backlog);
+static int nr_socket_local_accept(void *obj, nr_transport_addr *addrp, nr_socket **sockp);
 
 static nr_socket_vtbl nr_socket_local_vtbl={
   2,
@@ -80,7 +85,12 @@ static nr_socket_vtbl nr_socket_local_vtbl={
   nr_socket_local_recvfrom,
   nr_socket_local_getfd,
   nr_socket_local_getaddr,
-  nr_socket_local_close
+  nr_socket_local_connect,
+  nr_socket_local_swrite,
+  nr_socket_local_sread,
+  nr_socket_local_close,
+  nr_socket_local_listen,
+  nr_socket_local_accept,
 };
 
 int nr_socket_local_create(void *obj, nr_transport_addr *addr, nr_socket **sockp)
@@ -94,7 +104,6 @@ int nr_socket_local_create(void *obj, nr_transport_addr *addr, nr_socket **sockp
     switch(addr->protocol){
       case IPPROTO_TCP:
         stype=SOCK_STREAM;
-        ABORT(R_INTERNAL); /* Can't happen for now */
         break;
       case IPPROTO_UDP:
         stype=SOCK_DGRAM;
@@ -278,3 +287,81 @@ static int nr_socket_local_close(void *obj)
 
     return(0);
   }
+static int nr_socket_local_connect(void *obj, nr_transport_addr *addr) {
+  return 0;
+}
+static int nr_socket_local_swrite(void *obj,const void *msg, size_t len, size_t *written) {
+    int r,_status;
+    nr_socket_local *lcl=obj;
+
+    if(lcl->sock==-1)
+      ABORT(R_EOD);
+
+    if((r=NR_SOCKET_WRITE(lcl->sock, msg, len))<0){
+      r_log_e(LOG_GENERIC,LOG_ERR,"Error in swrite");
+
+      ABORT(R_IO_ERROR);
+    }
+    *written=r;
+
+    _status=0;
+  abort:
+    return(_status);
+}
+static int nr_socket_local_sread(void *obj,void * restrict buf, size_t maxlen, size_t *len) {
+    int r,_status;
+    nr_socket_local *lcl=obj;
+    if ((r=NR_SOCKET_READ(lcl->sock, buf, maxlen)) < 0) {
+      r_log_e(LOG_GENERIC,LOG_ERR,"Error in sread");
+      ABORT(R_IO_ERROR);
+    }
+    *len=r;
+
+    _status=0;
+  abort:
+    return(_status);
+}
+static int nr_socket_local_listen(void *obj, int backlog) {
+    int r,_status;
+    nr_socket_local *lcl=obj;
+    if ((r=listen(lcl->sock, backlog)) < 0) {
+      r_log_e(LOG_GENERIC,LOG_ERR,"Error in listen");
+      ABORT(R_IO_ERROR);
+    }
+
+    _status=0;
+  abort:
+    return(_status);
+}
+static int nr_socket_local_accept(void *obj, nr_transport_addr *addrp, nr_socket **sockp) {
+    int r,_status;
+    nr_socket_local *lcl=obj;
+    nr_socket_local *new_lcl=0;
+    struct sockaddr_in *addr = malloc(sizeof(*addr));
+    unsigned int size = sizeof(*addr);
+
+    if(!(new_lcl=RCALLOC(sizeof(nr_socket_local))))
+      ABORT(R_NO_MEMORY);
+    new_lcl->sock=-1;
+    if ((new_lcl->sock=accept(lcl->sock, (struct sockaddr *)addr, &size)) < 0) {
+      r_log_e(LOG_GENERIC,LOG_ERR,"Error in accepting");
+      ABORT(R_IO_ERROR);
+    }
+    if(r=nr_sockaddr_to_transport_addr((struct sockaddr *)addr, IPPROTO_TCP, 1, addrp) < 0) {
+      r_log_e(LOG_GENERIC,LOG_ERR,"Error in addr");
+      ABORT(r);
+    }
+    nr_transport_addr_copy(&new_lcl->my_addr, &lcl->my_addr);
+
+    if(r=nr_socket_create_int(new_lcl, &nr_socket_local_vtbl, sockp)) {
+      r_log(LOG_GENERIC,LOG_ERR,"Couldn't create socket after accepted");
+      ABORT(r);
+    }
+
+    _status=0;
+  abort:
+    if(_status){
+      nr_socket_local_destroy((void **)&new_lcl);
+    }
+    return(_status);
+}
