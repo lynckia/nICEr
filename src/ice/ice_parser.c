@@ -348,7 +348,7 @@ nr_ice_peer_candidate_from_attribute(nr_ice_ctx *ctx,char *orig,nr_ice_media_str
 
     nr_ice_candidate_compute_codeword(cand);
 
-    nr_concat_strings(&cand->label, nr_ice_candidate_type_names[cand->type], "(", cand->label, ")");
+    nr_concat_strings(&cand->label, "(", nr_ice_candidate_type_names[cand->type], ")");
 
     *candp=cand;
 
