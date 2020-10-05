@@ -628,8 +628,8 @@ void nr_ice_candidate_pair_check_reduncancy(nr_ice_cand_pair_head *head,nr_ice_c
     c1=TAILQ_FIRST(head);
     while(c1){
       if (pair->remote->type != PEER_REFLEXIVE && c1->remote->type == PEER_REFLEXIVE &&
-          nr_transport_addr_cmp(&c1->local->addr,&pair->local->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
-          nr_transport_addr_cmp(&c1->remote->addr,&pair->remote->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL)) {
+          !nr_transport_addr_cmp(&c1->local->addr,&pair->local->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
+          !nr_transport_addr_cmp(&c1->remote->addr,&pair->remote->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL)) {
         // We found a redundant pair with a remote Peer Reflexive.
         c1->priority = pair->priority;
         nr_ice_candidate_pair_cancel(pair->pctx, pair, 0);
