@@ -116,6 +116,7 @@ int nr_ice_media_stream_get_consent_status(nr_ice_media_stream *stream, int comp
 int nr_ice_media_stream_disable_component(nr_ice_media_stream *stream, int component_id);
 int nr_ice_media_stream_pair_new_trickle_candidate(nr_ice_peer_ctx *pctx, nr_ice_media_stream *pstream, nr_ice_candidate *cand);
 void nr_ice_media_stream_role_change(nr_ice_media_stream *stream);
+void nr_ice_media_stream_resort_check_list(nr_ice_media_stream *stream);
 
 #ifdef __cplusplus
 }

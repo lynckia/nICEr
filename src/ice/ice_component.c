@@ -211,7 +211,7 @@ static int nr_ice_component_get_port_from_range(struct nr_ice_ctx_ *ctx, uint16_
     uint16_t min_port = ctx->min_port ? ctx->min_port : 49152;
     uint16_t max_port = ctx->max_port ? ctx->max_port : 65535;
     if (max_port < min_port)
-      ABORT(r);
+      ABORT(-1);
     const unsigned int range = 1 + max_port - min_port;
     const unsigned int buckets = RAND_MAX / range;
     const unsigned int limit = buckets * range;
@@ -1740,6 +1740,8 @@ int nr_ice_component_insert_pair(nr_ice_component *pcomp, nr_ice_cand_pair *pair
     if(r=nr_ice_candidate_pair_insert(&pair->remote->stream->check_list,pair))
       ABORT(r);
 
+    nr_ice_candidate_pair_check_reduncancy(&pair->remote->stream->check_list);
+
     pair_inserted=1;
 
     /* Make sure the check timer is running, if the stream was previously
@@ -1818,7 +1820,7 @@ void nr_ice_component_dump_state(nr_ice_component *comp, int log_level)
 
     cand=TAILQ_FIRST(&comp->candidates);
     while(cand){
-      r_log(LOG_ICE,log_level,"ICE(%s)/ICE-STREAM(%s)/CAND(%s): %s",comp->ctx->label,comp->stream->label,cand->codeword,cand->label);
+      r_log(LOG_ICE,log_level,"ICE(%s)/ICE-STREAM(%s)/CAND(%s): %s, priority:0x%llx",comp->ctx->label,comp->stream->label,cand->codeword,cand->label,cand->priority);
       cand=TAILQ_NEXT(cand,entry_comp);
     }
   }
