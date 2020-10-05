@@ -633,7 +633,7 @@ void nr_ice_candidate_pair_check_reduncancy(nr_ice_cand_pair_head *head,nr_ice_c
         // We found a redundant pair with a remote Peer Reflexive.
         c1->priority = pair->priority;
         nr_ice_candidate_pair_cancel(pair->pctx, pair, 0);
-        r_log(LOG_ICE,LOG_WARNING,"ICE-PEER(%s)/STREAM(%s)/CAND-PAIR(%s)/COMP(%d): Redundancy with: %s",pair->pctx->label,pair->local->stream->label,pair->codeword,pair->remote->component->component_id,c1->codeword);
+        r_log(LOG_ICE,LOG_WARNING,"ICE-PEER(%s)/STREAM(%s)/CAND-PAIR(%s)/COMP(%d): Redundancy with: %s, %s == %s",pair->pctx->label,pair->local->stream->label,pair->codeword,pair->remote->component->component_id,c1->codeword, pair->remote->addr.as_string, c1->remote->addr.as_string);
       }
 
       c1=TAILQ_NEXT(c1,check_queue_entry);
