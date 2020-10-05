@@ -621,27 +621,24 @@ int nr_ice_candidate_pair_insert(nr_ice_cand_pair_head *head,nr_ice_cand_pair *p
     return(0);
   }
 
-void nr_ice_candidate_pair_check_reduncancy(nr_ice_cand_pair_head *head)
+void nr_ice_candidate_pair_check_reduncancy(nr_ice_cand_pair_head *head,nr_ice_cand_pair *pair)
   {
-    nr_ice_cand_pair *pair;
     nr_ice_cand_pair *c1;
 
-    pair=TAILQ_FIRST(head);
-    while(pair){
-      c1=TAILQ_FIRST(head);
-      while(c1){
-        if (pair->remote->type != PEER_REFLEXIVE && c1->remote->type == PEER_REFLEXIVE &&
-            nr_transport_addr_cmp(&c1->local->addr,&pair->local->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
-            nr_transport_addr_cmp(&c1->remote->addr,&pair->remote->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL)) {
-          // We found a redundant pair with a remote Peer Reflexive.
-          c1->priority = pair->priority;
-          nr_ice_candidate_pair_cancel(pair->pctx, pair, 0);
-        }
-
-        c1=TAILQ_NEXT(c1,check_queue_entry);
+    c1=TAILQ_FIRST(head);
+    while(c1){
+      if (pair->remote->type != PEER_REFLEXIVE && c1->remote->type == PEER_REFLEXIVE &&
+          nr_transport_addr_cmp(&c1->local->addr,&pair->local->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
+          nr_transport_addr_cmp(&c1->remote->addr,&pair->remote->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL)) {
+        // We found a redundant pair with a remote Peer Reflexive.
+        c1->priority = pair->priority;
+        nr_ice_candidate_pair_cancel(pair->pctx, pair, 0);
+        r_log(LOG_ICE,LOG_INFO,"ICE-PEER(%s)/STREAM(%s)/CAND-PAIR(%s)/COMP(%d): Redundancy with: %s",pair->pctx->label,pair->local->stream->label,pair->codeword,pair->remote->component->component_id,c1->codeword);
       }
-      pair=TAILQ_NEXT(pair,check_queue_entry);
+
+      c1=TAILQ_NEXT(c1,check_queue_entry);
     }
+    pair=TAILQ_NEXT(pair,check_queue_entry);
   }
 
 void nr_ice_candidate_pair_restart_stun_nominated_cb(NR_SOCKET s, int how, void *cb_arg)
