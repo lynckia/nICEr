@@ -1058,8 +1058,6 @@ void nr_ice_media_stream_resort_check_list(nr_ice_media_stream *stream)
     nr_ice_cand_pair *pair,*temp_pair;
     nr_ice_cand_pair_head old_checklist;
 
-    assert(stream->ice_state != NR_ICE_MEDIA_STREAM_UNPAIRED);
-
     /* Move check_list to old_checklist (not POD, have to do the hard way) */
     TAILQ_INIT(&old_checklist);
     TAILQ_FOREACH_SAFE(pair,&stream->check_list,check_queue_entry,temp_pair) {
