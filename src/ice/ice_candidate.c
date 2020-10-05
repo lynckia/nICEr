@@ -169,7 +169,7 @@ int nr_ice_candidate_create(nr_ice_ctx *ctx,nr_ice_component *comp,nr_ice_socket
         break;
 
       case PEER_REFLEXIVE:
-        snprintf(label, sizeof(label), "prflx");
+        snprintf(label, sizeof(label), "prflx(%s)", cand->addr.as_string);
         break;
 
       default:
@@ -244,6 +244,7 @@ int nr_ice_peer_peer_rflx_candidate_create(nr_ice_ctx *ctx,char *label, nr_ice_c
     cand->component_id=comp->component_id;
     cand->component=comp;
     cand->stream=comp->stream;
+    nr_concat_strings(&cand->label, cand->label, "(", addr->as_string, ")");
 
 
     r_log(LOG_ICE,LOG_DEBUG,"ICE(%s)/CAND(%s): creating candidate with type %s",

@@ -1820,7 +1820,7 @@ void nr_ice_component_dump_state(nr_ice_component *comp, int log_level)
 
     cand=TAILQ_FIRST(&comp->candidates);
     while(cand){
-      r_log(LOG_ICE,log_level,"ICE(%s)/ICE-STREAM(%s)/CAND(%s - %s): %s, priority:0x%llx",comp->ctx->label,comp->stream->label,cand->type,cand->codeword,cand->label,cand->priority);
+      r_log(LOG_ICE,log_level,"ICE(%s)/ICE-STREAM(%s)/CAND(%s): %s, priority:0x%llx",comp->ctx->label,comp->stream->label,cand->codeword,cand->label,cand->priority);
       cand=TAILQ_NEXT(cand,entry_comp);
     }
   }
