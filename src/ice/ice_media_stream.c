@@ -289,6 +289,9 @@ int nr_ice_media_stream_pair_candidates(nr_ice_peer_ctx *pctx,nr_ice_media_strea
       pcomp=STAILQ_NEXT(pcomp,entry);
     };
 
+    // We resort candidate pairs in case of redundancy.
+    nr_ice_media_stream_resort_check_list(pstream);
+
     if (pstream->ice_state == NR_ICE_MEDIA_STREAM_UNPAIRED) {
       nr_ice_media_stream_set_state(pstream, NR_ICE_MEDIA_STREAM_CHECKS_FROZEN);
     }
@@ -1046,6 +1049,25 @@ void nr_ice_media_stream_role_change(nr_ice_media_stream *stream)
     TAILQ_FOREACH_SAFE(pair,&old_checklist,check_queue_entry,temp_pair) {
       TAILQ_REMOVE(&old_checklist,pair,check_queue_entry);
       nr_ice_candidate_pair_role_change(pair);
+      nr_ice_candidate_pair_insert(&stream->check_list,pair);
+    }
+  }
+
+void nr_ice_media_stream_resort_check_list(nr_ice_media_stream *stream)
+  {
+    nr_ice_cand_pair *pair,*temp_pair;
+    nr_ice_cand_pair_head old_checklist;
+
+    /* Move check_list to old_checklist (not POD, have to do the hard way) */
+    TAILQ_INIT(&old_checklist);
+    TAILQ_FOREACH_SAFE(pair,&stream->check_list,check_queue_entry,temp_pair) {
+      TAILQ_REMOVE(&stream->check_list,pair,check_queue_entry);
+      TAILQ_INSERT_TAIL(&old_checklist,pair,check_queue_entry);
+    }
+
+    /* Re-insert into the check list */
+    TAILQ_FOREACH_SAFE(pair,&old_checklist,check_queue_entry,temp_pair) {
+      TAILQ_REMOVE(&old_checklist,pair,check_queue_entry);
       nr_ice_candidate_pair_insert(&stream->check_list,pair);
     }
   }
