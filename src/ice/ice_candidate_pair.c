@@ -588,7 +588,8 @@ void nr_ice_candidate_pair_set_state(nr_ice_peer_ctx *pctx, nr_ice_cand_pair *pa
 
 void nr_ice_candidate_pair_dump_state(nr_ice_cand_pair *pair, int log_level)
   {
-    r_log(LOG_ICE,log_level,"CAND-PAIR(%s): pair %s (%s-%s): state=%s, priority=0x%llx\n",pair->codeword,pair->as_string,pair->local->codeword,pair->remote->codeword,nr_ice_cand_pair_states[pair->state],pair->priority);
+    r_log(LOG_ICE,log_level,"CAND-PAIR(%s): pair %s %s (%s-%s): state=%s, priority=0x%llx\n",
+      pair->pctx->label, pair->codeword,pair->as_string,pair->local->codeword,pair->remote->codeword,nr_ice_cand_pair_states[pair->state],pair->priority);
   }
 
 
@@ -621,7 +622,7 @@ int nr_ice_candidate_pair_insert(nr_ice_cand_pair_head *head,nr_ice_cand_pair *p
     return(0);
   }
 
-void nr_ice_candidate_pair_check_reduncancy(nr_ice_cand_pair_head *head,nr_ice_cand_pair *pair)
+void nr_ice_candidate_pair_check_redundancy(nr_ice_cand_pair_head *head,nr_ice_cand_pair *pair)
   {
     nr_ice_cand_pair *c1;
 

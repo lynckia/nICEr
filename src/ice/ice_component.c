@@ -1742,7 +1742,7 @@ int nr_ice_component_insert_pair(nr_ice_component *pcomp, nr_ice_cand_pair *pair
     if(r=nr_ice_candidate_pair_insert(&pair->remote->stream->check_list,pair))
       ABORT(r);
 
-    nr_ice_candidate_pair_check_reduncancy(&pair->remote->stream->check_list,pair);
+    nr_ice_candidate_pair_check_redundancy(&pair->remote->stream->check_list,pair);
 
     pair_inserted=1;
 
