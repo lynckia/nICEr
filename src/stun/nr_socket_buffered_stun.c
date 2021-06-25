@@ -346,11 +346,7 @@ static int nr_socket_buffered_stun_recvfrom(void *obj,void * restrict buf,
   sock->read_state = NR_ICE_SOCKET_READ_NONE;
   sock->bytes_needed = (sock->framing_type == ICE_TCP_FRAMING) ? sizeof(nr_frame_header) : sizeof(nr_stun_message_header);
 
-  assert(!nr_transport_addr_is_wildcard(&sock->remote_addr));
-  if (!nr_transport_addr_is_wildcard(&sock->remote_addr)) {
-    if ((r=nr_transport_addr_copy(from, &sock->remote_addr)))
-      ABORT(r);
-  }
+  if ((r = nr_transport_addr_copy(from, &sock->remote_addr))) ABORT(r);
 
   _status=0;
 abort:
@@ -604,6 +600,12 @@ abort:
   if (_status && _status != R_WOULDBLOCK) {
     r_log(LOG_GENERIC, LOG_ERR, "Failure in writable_cb: %d", _status);
     nr_socket_buffered_stun_failed(sock);
+    /* Report this failure up; the only way to do this is a readable callback.
+     * Once the user tries to read (using nr_socket_buffered_stun_recvfrom), it
+     * will notice that there has been a failure. */
+    if (sock->readable_cb) {
+      sock->readable_cb(s, NR_ASYNC_WAIT_READ, sock->readable_cb_arg);
+    }
   } else if (sock->pending) {
     nr_socket_buffered_stun_arm_writable_cb(sock);
   }

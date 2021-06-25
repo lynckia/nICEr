@@ -42,8 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "async_timer.h"
 #include "ice_reg.h"
 
-static void nr_ice_peer_ctx_destroy_cb(NR_SOCKET s, int how, void *cb_arg);
-static int nr_ice_peer_ctx_parse_stream_attributes_int(nr_ice_peer_ctx *pctx, nr_ice_media_stream *stream, nr_ice_media_stream *pstream, char **attrs, int attr_ct);
+static void nr_ice_peer_ctx_parse_stream_attributes_int(nr_ice_peer_ctx *pctx, nr_ice_media_stream *stream, nr_ice_media_stream *pstream, char **attrs, int attr_ct);
 static int nr_ice_ctx_parse_candidate(nr_ice_peer_ctx *pctx, nr_ice_media_stream *pstream, char *candidate, int trickled, const char *mdns_addr);
 static void nr_ice_peer_ctx_start_trickle_timer(nr_ice_peer_ctx *pctx);
 
@@ -81,7 +80,7 @@ int nr_ice_peer_ctx_create(nr_ice_ctx *ctx, nr_ice_handler *handler,char *label,
     _status = 0;
   abort:
     if(_status){
-      nr_ice_peer_ctx_destroy_cb(0,0,pctx);
+      nr_ice_peer_ctx_destroy(&pctx);
     }
     return(_status);
   }
@@ -115,8 +114,7 @@ int nr_ice_peer_ctx_parse_stream_attributes(nr_ice_peer_ctx *pctx, nr_ice_media_
     pstream->local_stream=stream;
     pstream->pctx=pctx;
 
-    if (r=nr_ice_peer_ctx_parse_stream_attributes_int(pctx,stream,pstream,attrs,attr_ct))
-      ABORT(r);
+    nr_ice_peer_ctx_parse_stream_attributes_int(pctx,stream,pstream,attrs,attr_ct);
 
     /* Now that we have the ufrag and password, compute all the username/password
        pairs */
@@ -139,13 +137,17 @@ int nr_ice_peer_ctx_parse_stream_attributes(nr_ice_peer_ctx *pctx, nr_ice_media_
       ABORT(r);
 
     STAILQ_INSERT_TAIL(&pctx->peer_streams,pstream,entry);
+    pstream=0;
 
     _status=0;
   abort:
+    if (_status) {
+      nr_ice_media_stream_destroy(&pstream);
+    }
     return(_status);
   }
 
-static int nr_ice_peer_ctx_parse_stream_attributes_int(nr_ice_peer_ctx *pctx, nr_ice_media_stream *stream, nr_ice_media_stream *pstream, char **attrs, int attr_ct)
+static void nr_ice_peer_ctx_parse_stream_attributes_int(nr_ice_peer_ctx *pctx, nr_ice_media_stream *stream, nr_ice_media_stream *pstream, char **attrs, int attr_ct)
   {
     int r;
     int i;
@@ -169,7 +171,6 @@ static int nr_ice_peer_ctx_parse_stream_attributes_int(nr_ice_peer_ctx *pctx, nr
     }
 
     /* Doesn't fail because we just skip errors */
-    return(0);
   }
 
 static int nr_ice_ctx_parse_candidate(nr_ice_peer_ctx *pctx, nr_ice_media_stream *pstream, char *candidate, int trickled, const char *mdns_addr)
@@ -278,6 +279,10 @@ int nr_ice_peer_ctx_parse_trickle_candidate(nr_ice_peer_ctx *pctx, nr_ice_media_
     int r,_status;
     int needs_pairing = 0;
 
+    if (stream->obsolete) {
+      return 0;
+    }
+
     r_log(LOG_ICE,LOG_DEBUG,"ICE(%s): peer (%s) parsing trickle ICE candidate %s",pctx->ctx->label,pctx->label,candidate);
     r = nr_ice_peer_ctx_find_pstream(pctx, stream, &pstream);
     if (r)
@@ -305,15 +310,15 @@ int nr_ice_peer_ctx_parse_trickle_candidate(nr_ice_peer_ctx *pctx, nr_ice_media_
        just re-pair the stream which is inefficient but still
        fine because we suppress duplicate pairing */
     if (needs_pairing) {
-      if(r=nr_ice_media_stream_pair_candidates(pctx, stream, pstream)) {
-        r_log(LOG_ICE,LOG_ERR,"ICE(%s): peer (%s), stream(%s) failed to pair trickle ICE candidates",pctx->ctx->label,pctx->label,stream->label);
-        ABORT(r);
-      }
-
       /* Start the remote trickle grace timeout if it hasn't been started by
          another trickled candidate or from the SDP. */
       if (!pctx->trickle_grace_period_timer) {
         nr_ice_peer_ctx_start_trickle_timer(pctx);
+      }
+
+      if(r=nr_ice_media_stream_pair_candidates(pctx, stream, pstream)) {
+        r_log(LOG_ICE,LOG_ERR,"ICE(%s): peer (%s), stream(%s) failed to pair trickle ICE candidates",pctx->ctx->label,pctx->label,stream->label);
+        ABORT(r);
       }
 
       /* Start checks if this stream is not checking yet or if it has checked
@@ -432,14 +437,14 @@ int nr_ice_peer_ctx_pair_new_trickle_candidate(nr_ice_ctx *ctx, nr_ice_peer_ctx 
     if ((r = nr_ice_peer_ctx_find_pstream(pctx, cand->stream, &pstream)))
       ABORT(r);
 
-    if ((r = nr_ice_media_stream_pair_new_trickle_candidate(pctx, pstream, cand)))
-      ABORT(r);
-
     /* Start the remote trickle grace timeout if it hasn't been started
        already. */
     if (!pctx->trickle_grace_period_timer) {
       nr_ice_peer_ctx_start_trickle_timer(pctx);
     }
+
+    if ((r = nr_ice_media_stream_pair_new_trickle_candidate(pctx, pstream, cand)))
+      ABORT(r);
 
     _status=0;
  abort:
@@ -470,10 +475,14 @@ int nr_ice_peer_ctx_disable_component(nr_ice_peer_ctx *pctx, nr_ice_media_stream
     return(_status);
   }
 
-static void nr_ice_peer_ctx_destroy_cb(NR_SOCKET s, int how, void *cb_arg)
-  {
-    nr_ice_peer_ctx *pctx=cb_arg;
+  void nr_ice_peer_ctx_destroy(nr_ice_peer_ctx** pctxp) {
+    if (!pctxp || !*pctxp) return;
+
+    nr_ice_peer_ctx* pctx = *pctxp;
     nr_ice_media_stream *str1,*str2;
+
+    /* Stop calling the handler */
+    pctx->handler = 0;
 
     NR_async_timer_cancel(pctx->connected_cb_timer);
     RFREE(pctx->label);
@@ -492,24 +501,9 @@ static void nr_ice_peer_ctx_destroy_cb(NR_SOCKET s, int how, void *cb_arg)
     }
 
     RFREE(pctx);
-  }
-
-int nr_ice_peer_ctx_destroy(nr_ice_peer_ctx **pctxp)
-  {
-
-    if(!pctxp || !*pctxp)
-      return(0);
-
-    /* Stop calling the handler */
-    (*pctxp)->handler = 0;
-
-    NR_ASYNC_SCHEDULE(nr_ice_peer_ctx_destroy_cb,*pctxp);
 
     *pctxp=0;
-
-    return(0);
   }
-
 
 /* Start the checks for the first media stream (S 5.7)
    The rest remain FROZEN */
@@ -533,11 +527,9 @@ int nr_ice_peer_ctx_start_checks2(nr_ice_peer_ctx *pctx, int allow_non_first)
     nr_ice_media_stream *stream;
     int started = 0;
 
-    /* Ensure that any existing grace period timers are cancelled */
-    if(pctx->trickle_grace_period_timer) {
-      NR_async_timer_cancel(pctx->trickle_grace_period_timer);
-      pctx->trickle_grace_period_timer=0;
-    }
+    /* Ensure that grace period timer is running. We might cancel this if we
+     * didn't actually start any pairs. */
+    nr_ice_peer_ctx_start_trickle_timer(pctx);
 
     /* Might have added some streams */
     pctx->reported_connected = 0;
@@ -616,11 +608,10 @@ int nr_ice_peer_ctx_start_checks2(nr_ice_peer_ctx *pctx, int allow_non_first)
 
     if (!started) {
       r_log(LOG_ICE,LOG_NOTICE,"ICE(%s): peer (%s) no checks to start",pctx->ctx->label,pctx->label);
+      /* Never mind on the grace period timer */
+      NR_async_timer_cancel(pctx->trickle_grace_period_timer);
+      pctx->trickle_grace_period_timer=0;
       ABORT(R_NOT_FOUND);
-    }
-    else {
-      /* Start grace period timer for more remote trickle candidates. */
-      nr_ice_peer_ctx_start_trickle_timer(pctx);
     }
 
     _status=0;
