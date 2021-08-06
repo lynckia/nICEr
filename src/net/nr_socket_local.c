@@ -107,14 +107,18 @@ int nr_socket_local_create(void *obj, nr_transport_addr *addr, nr_socket **sockp
       ABORT(R_NO_MEMORY);
     lcl->sock=-1;
 
-    if((lcl->sock=socket(addr->addr->sa_family, stype, addr->protocol))<0){
+
+    if((lcl->sock=socket((addr->protocol == NR_IPV4) ? 
+      addr->u.addr4.sin_family :
+      addr->u.addr6.sin6_family, stype, addr->protocol))<0){
       r_log(LOG_GENERIC,LOG_CRIT,"Couldn't create socket");
       //r_log_e(LOG_GENERIC,LOG_CRIT,"Couldn't create socket");
       ABORT(R_INTERNAL);
     }
 
 
-    if(bind(lcl->sock, addr->addr, addr->addr_len)<0){
+    if(bind(lcl->sock, (addr->protocol == NR_IPV4) ? &(addr->u.addr4) : &(addr->u.addr6),
+     (addr->protocol == NR_IPV4) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6))<0){
       r_log(LOG_GENERIC,LOG_CRIT,"Couldn't bind socket to address %s",addr->as_string);
       //r_log_e(LOG_GENERIC,LOG_CRIT,"Couldn't bind socket to address %s",addr->as_string);
       ABORT(R_INTERNAL);
@@ -197,7 +201,9 @@ static int nr_socket_local_sendto(void *obj,const void *msg, size_t len,
 
     //r_log(LOG_GENERIC,LOG_DEBUG,"Writing to sock (%x:%d), len=%d",lcl,lcl->sock,len);
 
-    if((r=sendto(lcl->sock, msg, len, flags, addr->addr, addr->addr_len))<0){
+    if((r=sendto(lcl->sock, msg, len, flags, 
+      (addr->protocol == NR_IPV4) ? &(addr->u.addr4) : &(addr->u.addr6),
+      (addr->protocol == NR_IPV4) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6)))<0){
       switch (errno) {
       case EHOSTUNREACH:
           level = LOG_INFO;
