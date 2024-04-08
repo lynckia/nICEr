@@ -71,7 +71,8 @@ static int nr_socket_local_recvfrom(void *obj,void * restrict buf,
   size_t maxlen, size_t *len, int flags, nr_transport_addr *from);
 static int nr_socket_local_getfd(void *obj, NR_SOCKET *fd);
 static int nr_socket_local_getaddr(void *obj, nr_transport_addr *addrp);
-static int nr_socket_local_close(void *obj);
+// Addded nr_transport_addr because of an error with -Wincompatible-function-pointer-types
+static int nr_socket_local_close(void *obj, nr_transport_addr *addrp);
 
 static nr_socket_vtbl nr_socket_local_vtbl={
   2,
@@ -263,7 +264,7 @@ static int nr_socket_local_getaddr(void *obj, nr_transport_addr *addrp)
     return(0);
   }
 
-static int nr_socket_local_close(void *obj)
+static int nr_socket_local_close(void *obj, nr_transport_addr *addrp)
   {
     nr_socket_local *lcl=obj;
 
