@@ -648,6 +648,7 @@ void nr_ice_peer_ctx_dump_state(nr_ice_peer_ctx *pctx, int log_level)
     stream=STAILQ_FIRST(&pctx->peer_streams);
     while(stream){
       nr_ice_media_stream_dump_state(pctx,stream,log_level);
+      stream=STAILQ_NEXT(stream,entry);
     }
     r_log(LOG_ICE,log_level,"==========================================");
   }
