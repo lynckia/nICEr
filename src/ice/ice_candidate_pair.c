@@ -588,7 +588,8 @@ void nr_ice_candidate_pair_set_state(nr_ice_peer_ctx *pctx, nr_ice_cand_pair *pa
 
 void nr_ice_candidate_pair_dump_state(nr_ice_cand_pair *pair, int log_level)
   {
-    r_log(LOG_ICE,log_level,"CAND-PAIR(%s): pair %s: state=%s, priority=0x%llx\n",pair->codeword,pair->as_string,nr_ice_cand_pair_states[pair->state],pair->priority);
+    r_log(LOG_ICE,log_level,"CAND-PAIR(%s): pair %s %s (%s-%s): state=%s, priority=0x%llx\n",
+      pair->pctx->label, pair->codeword,pair->as_string,pair->local->codeword,pair->remote->codeword,nr_ice_cand_pair_states[pair->state],pair->priority);
   }
 
 
@@ -619,6 +620,26 @@ int nr_ice_candidate_pair_insert(nr_ice_cand_pair_head *head,nr_ice_cand_pair *p
     if(!c1) TAILQ_INSERT_TAIL(head,pair,check_queue_entry);
 
     return(0);
+  }
+
+void nr_ice_candidate_pair_check_redundancy(nr_ice_cand_pair_head *head,nr_ice_cand_pair *pair)
+  {
+    nr_ice_cand_pair *c1;
+
+    c1=TAILQ_FIRST(head);
+    while(c1){
+      if (pair->remote->type != PEER_REFLEXIVE && c1->remote->type == PEER_REFLEXIVE &&
+          !nr_transport_addr_cmp(&c1->local->addr,&pair->local->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL) &&
+          !nr_transport_addr_cmp(&c1->remote->addr,&pair->remote->addr,NR_TRANSPORT_ADDR_CMP_MODE_ALL)) {
+        // We found a redundant pair with a remote Peer Reflexive.
+        c1->priority = pair->priority;
+        nr_ice_candidate_pair_cancel(pair->pctx, pair, 0);
+        r_log(LOG_ICE,LOG_WARNING,"ICE-PEER(%s)/STREAM(%s)/CAND-PAIR(%s)/COMP(%d): Redundancy with: %s, %s == %s",pair->pctx->label,pair->local->stream->label,pair->codeword,pair->remote->component->component_id,c1->codeword, pair->remote->addr.as_string, c1->remote->addr.as_string);
+      }
+
+      c1=TAILQ_NEXT(c1,check_queue_entry);
+    }
+    pair=TAILQ_NEXT(pair,check_queue_entry);
   }
 
 void nr_ice_candidate_pair_restart_stun_nominated_cb(NR_SOCKET s, int how, void *cb_arg)
