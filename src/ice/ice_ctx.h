@@ -53,17 +53,8 @@ extern "C" {
 #define NR_ICE_STUN_SERVER_TYPE_DNSNAME 2
 
 typedef struct nr_ice_stun_server_ {
-  int type;
-  union {
-    nr_transport_addr addr;
-    struct {
-      char host[256];  /* Limit from RFC 1034, plus a 0 byte */
-      UINT2 port;
-    } dnsname;
-  } u;
+  nr_transport_addr addr;
   int id;
-  int transport;
-  int tls; /* Whether to use TLS or not */
 } nr_ice_stun_server;
 
 typedef struct nr_ice_turn_server_ {
@@ -176,7 +167,7 @@ int nr_ice_ctx_create_with_credentials(char *label, UINT4 flags, char* ufrag, ch
 
 void nr_ice_ctx_add_flags(nr_ice_ctx *ctx, UINT4 flags);
 void nr_ice_ctx_remove_flags(nr_ice_ctx *ctx, UINT4 flags);
-int nr_ice_ctx_destroy(nr_ice_ctx **ctxp);
+void nr_ice_ctx_destroy(nr_ice_ctx** ctxp);
 int nr_ice_set_local_addresses(nr_ice_ctx *ctx, nr_local_addr* stun_addrs, int stun_addr_ct);
 int nr_ice_set_target_for_default_local_address_lookup(nr_ice_ctx *ctx, const char *target_ip, UINT2 target_port);
 int nr_ice_gather(nr_ice_ctx *ctx, NR_async_cb done_cb, void *cb_arg);
